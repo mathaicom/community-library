@@ -32,7 +32,9 @@ function App() {
     loadData(KEYS.transactions)
   );
 
-  const [loggedIn, setLoggedIn] = useState(false);
+  // CHANGED: Open the dashboard when the app first loads.
+  const [loggedIn, setLoggedIn] = useState(true);
+
   const [page, setPage] = useState("Dashboard");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -292,7 +294,11 @@ function App() {
   function saveMember(event) {
     event.preventDefault();
 
-    if (!memberName.trim() || !membershipId.trim() || !role.trim()) {
+    if (
+      !memberName.trim() ||
+      !membershipId.trim() ||
+      !role.trim()
+    ) {
       alert("Please fill in all fields.");
       return;
     }
@@ -346,7 +352,13 @@ function App() {
     );
   }
 
-  function createInput(label, value, setter, placeholder, type = "text") {
+  function createInput(
+    label,
+    value,
+    setter,
+    placeholder,
+    type = "text"
+  ) {
     return (
       <div className="input-group" key={label}>
         <label>{label}</label>
@@ -422,10 +434,7 @@ function App() {
       <>
         <div className="page-header">
           <h2>Books</h2>
-          <button
-            className="primary-btn"
-            onClick={openAddBook}
-          >
+          <button className="primary-btn" onClick={openAddBook}>
             Add Book
           </button>
         </div>
