@@ -10,7 +10,8 @@ const KEYS = {
 
 function loadData(key) {
   try {
-    return JSON.parse(localStorage.getItem(key)) || [];
+    const data = JSON.parse(localStorage.getItem(key));
+    return Array.isArray(data) ? data : [];
   } catch {
     return [];
   }
@@ -20,7 +21,7 @@ function App() {
   const [books, setBooks] = useState(() =>
     loadData(KEYS.books).map((book) => ({
       ...book,
-      quantity: book.quantity ?? 1,
+      quantity: Number(book.quantity ?? 1),
     }))
   );
 
@@ -32,8 +33,8 @@ function App() {
     loadData(KEYS.transactions)
   );
 
-  // CHANGED: Open the dashboard when the app first loads.
-  const [loggedIn, setLoggedIn] = useState(true);
+  // Login is required when the application first opens.
+  const [loggedIn, setLoggedIn] = useState(false);
 
   const [page, setPage] = useState("Dashboard");
   const [username, setUsername] = useState("");
@@ -79,10 +80,11 @@ function App() {
   function login(event) {
     event.preventDefault();
 
-    if (username === "admin" && password === "1234") {
+    if (username.trim() === "admin" && password === "mathai75") {
       setLoggedIn(true);
       setPage("Dashboard");
       setError("");
+      setPassword("");
     } else {
       setError("Incorrect username or password.");
     }
@@ -176,9 +178,7 @@ function App() {
   }
 
   function deleteBook(id) {
-    if (
-      !window.confirm("Are you sure you want to delete this book?")
-    ) {
+    if (!window.confirm("Are you sure you want to delete this book?")) {
       return;
     }
 
@@ -251,11 +251,7 @@ function App() {
   }
 
   function returnBook(book) {
-    if (
-      !window.confirm(
-        `Return one copy of "${book.title}"?`
-      )
-    ) {
+    if (!window.confirm(`Return one copy of "${book.title}"?`)) {
       return;
     }
 
@@ -284,7 +280,6 @@ function App() {
   }
 
   function openAddMember() {
-    setSelectedBook(null);
     setMemberName("");
     setMembershipId("");
     setRole("Member");
@@ -305,8 +300,8 @@ function App() {
 
     const duplicate = members.some(
       (member) =>
-        String(member.membershipId || member.email || "").toLowerCase() ===
-        membershipId.trim().toLowerCase()
+        String(member.membershipId || member.email || "")
+          .toLowerCase() === membershipId.trim().toLowerCase()
     );
 
     if (duplicate) {
@@ -336,14 +331,12 @@ function App() {
 
     if (hasBorrowed) {
       alert(
-        "This member has borrowed a book and cannot be deleted."
+        "This member has a borrowing transaction and cannot be deleted."
       );
       return;
     }
 
-    if (
-      !window.confirm("Are you sure you want to delete this member?")
-    ) {
+    if (!window.confirm("Are you sure you want to delete this member?")) {
       return;
     }
 
@@ -387,14 +380,20 @@ function App() {
   }
 
   function renderDashboard() {
-    const totalBooks = books.length;
+    const totalBooks = books.reduce(
+      (total, book) => total + book.quantity,
+      0
+    );
 
-    const availableBooks = books.filter(
-      (book) => book.quantity > 0
-    ).length;
+    const availableBooks = books.reduce(
+      (total, book) => total + book.quantity,
+      0
+    );
 
-    const borrowedBooks = books.filter(
-      (book) => book.quantity === 0
+    const borrowedBooks = transactions.filter(
+      (transaction) => transaction.type === "Borrow"
+    ).length - transactions.filter(
+      (transaction) => transaction.type === "Return"
     ).length;
 
     const lowStockBooks = books.filter(
@@ -406,9 +405,9 @@ function App() {
         <h2>Dashboard</h2>
 
         <div className="stats-container">
-          {statCard("Total Books", totalBooks)}
-          {statCard("Available Books", availableBooks)}
-          {statCard("Borrowed Books", borrowedBooks)}
+          {statCard("Total Copies", totalBooks)}
+          {statCard("Available Copies", availableBooks)}
+          {statCard("Books Currently Borrowed", Math.max(0, borrowedBooks))}
           {statCard("Members", members.length)}
         </div>
 
@@ -462,27 +461,17 @@ function App() {
               {books.map((book) => (
                 <tr
                   key={book.id}
-                  className={
-                    book.quantity <= 2 ? "low-stock-row" : ""
-                  }
+                  className={book.quantity <= 2 ? "low-stock-row" : ""}
                 >
                   {tableCell(book.id)}
                   {tableCell(book.title)}
                   {tableCell(book.author)}
                   {tableCell(book.category)}
                   {tableCell(book.isbn)}
-
-                  <td
-                    className={
-                      book.quantity <= 2 ? "low-stock" : ""
-                    }
-                  >
+                  <td className={book.quantity <= 2 ? "low-stock" : ""}>
                     {book.quantity}
                   </td>
-
-                  {tableCell(
-                    book.quantity === 0 ? "Borrowed" : "Available"
-                  )}
+                  {tableCell(book.quantity === 0 ? "Borrowed" : "Available")}
 
                   <td>
                     {book.quantity > 0 ? (
@@ -520,9 +509,7 @@ function App() {
             </tbody>
           </table>
 
-          {books.length === 0 && (
-            <p>No books have been added yet.</p>
-          )}
+          {books.length === 0 && <p>No books have been added yet.</p>}
         </div>
       </>
     );
@@ -552,8 +539,7 @@ function App() {
                 );
 
                 const member = members.find(
-                  (item) =>
-                    item.id === Number(transaction.memberId)
+                  (item) => item.id === Number(transaction.memberId)
                 );
 
                 return (
@@ -582,11 +568,7 @@ function App() {
       <>
         <div className="page-header">
           <h2>Members</h2>
-
-          <button
-            className="primary-btn"
-            onClick={openAddMember}
-          >
+          <button className="primary-btn" onClick={openAddMember}>
             Add Member
           </button>
         </div>
@@ -608,9 +590,7 @@ function App() {
                 <tr key={member.id}>
                   {tableCell(member.id)}
                   {tableCell(member.name)}
-                  {tableCell(
-                    member.membershipId || member.email || ""
-                  )}
+                  {tableCell(member.membershipId || member.email || "")}
                   {tableCell(member.role || member.phone || "")}
 
                   <td>
@@ -643,41 +623,16 @@ function App() {
           <h2>
             {modal === "book" &&
               (selectedBook ? "Edit Book" : "Add New Book")}
-
             {modal === "member" && "Add New Member"}
             {modal === "borrow" && "Borrow Book"}
           </h2>
 
           {modal === "book" && (
             <form className="modal-form" onSubmit={saveBook}>
-              {createInput(
-                "Title",
-                title,
-                setTitle,
-                "Enter book title"
-              )}
-
-              {createInput(
-                "Author",
-                author,
-                setAuthor,
-                "Enter author"
-              )}
-
-              {createInput(
-                "Category",
-                category,
-                setCategory,
-                "Enter category"
-              )}
-
-              {createInput(
-                "ISBN",
-                isbn,
-                setIsbn,
-                "Enter ISBN"
-              )}
-
+              {createInput("Title", title, setTitle, "Enter book title")}
+              {createInput("Author", author, setAuthor, "Enter author")}
+              {createInput("Category", category, setCategory, "Enter category")}
+              {createInput("ISBN", isbn, setIsbn, "Enter ISBN")}
               {createInput(
                 "Quantity",
                 quantity,
@@ -690,7 +645,6 @@ function App() {
                 <button className="primary-btn" type="submit">
                   {selectedBook ? "Update Book" : "Save Book"}
                 </button>
-
                 <button
                   type="button"
                   className="cancel-btn"
@@ -704,13 +658,7 @@ function App() {
 
           {modal === "member" && (
             <form className="modal-form" onSubmit={saveMember}>
-              {createInput(
-                "Name",
-                memberName,
-                setMemberName,
-                "Enter member name"
-              )}
-
+              {createInput("Name", memberName, setMemberName, "Enter member name")}
               {createInput(
                 "Membership ID",
                 membershipId,
@@ -734,7 +682,6 @@ function App() {
                 <button className="primary-btn" type="submit">
                   Save Member
                 </button>
-
                 <button
                   type="button"
                   className="cancel-btn"
@@ -749,22 +696,17 @@ function App() {
           {modal === "borrow" && (
             <form className="modal-form" onSubmit={borrowBook}>
               <p>
-                {selectedBook?.title} - {selectedBook?.quantity} copies
-                available
+                {selectedBook?.title} - {selectedBook?.quantity} copies available
               </p>
 
               <div className="input-group">
                 <label>Select Member</label>
-
                 <select
                   value={selectedMember}
-                  onChange={(event) =>
-                    setSelectedMember(event.target.value)
-                  }
+                  onChange={(event) => setSelectedMember(event.target.value)}
                   required
                 >
                   <option value="">Select a member</option>
-
                   {members.map((member) => (
                     <option key={member.id} value={member.id}>
                       {member.name}
@@ -777,7 +719,6 @@ function App() {
                 <button className="primary-btn" type="submit">
                   Borrow
                 </button>
-
                 <button
                   type="button"
                   className="cancel-btn"
@@ -800,13 +741,7 @@ function App() {
         <p>Library Management System</p>
 
         <form onSubmit={login}>
-          {createInput(
-            "Username",
-            username,
-            setUsername,
-            "Enter username"
-          )}
-
+          {createInput("Username", username, setUsername, "Enter username")}
           {createInput(
             "Password",
             password,
@@ -829,24 +764,21 @@ function App() {
     <div className="app">
       <header>
         <h1>Community Library</h1>
-
         <button className="logout-btn" onClick={logout}>
           Logout
         </button>
       </header>
 
       <nav>
-        {["Dashboard", "Books", "Transactions", "Users"].map(
-          (item) => (
-            <button
-              key={item}
-              className={page === item ? "active" : ""}
-              onClick={() => setPage(item)}
-            >
-              {item}
-            </button>
-          )
-        )}
+        {["Dashboard", "Books", "Transactions", "Users"].map((item) => (
+          <button
+            key={item}
+            className={page === item ? "active" : ""}
+            onClick={() => setPage(item)}
+          >
+            {item}
+          </button>
+        ))}
       </nav>
 
       <main id="content">
